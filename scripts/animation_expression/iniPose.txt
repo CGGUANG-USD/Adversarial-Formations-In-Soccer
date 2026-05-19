@@ -1,0 +1,16 @@
+float $startFrame = 1;
+float $endFrame = 32;
+float $length = $endFrame - $startFrame + 1;
+
+
+
+string $caches[] = `ls -type cacheFile  "Boy_Parabole_AShapeCache*"`;
+if(size($caches)>0){
+for ($i = 0; $i < size($caches); $i++)
+{
+    int $offset = ($i * 7) % 32;
+    float $cacheFrame = fmod((frame - $startFrame + $offset), $length) + $startFrame;
+
+    setAttr ($caches[$i] + ".time") $cacheFrame;
+}
+}
