@@ -1,0 +1,60 @@
+string $humans[] = `ls -tr "*_GRP*"`;
+
+for($human in $humans)
+{
+	float $old_ry = `getAttr ($human+".ry")`;
+	float $x_agility = getAttr ($human+".Agility");
+	setAttr ($huma+".ry") ($old_ry+rand(-$x_agility,$x_agility));
+	
+     
+	if (getAttr($human+".tx") > 600) setAttr ($human+".ry") 270;
+	if (getAttr($human+".tx") < -600) setAttr ($human+".ry") 90;
+
+	if (getAttr($human+".tz") > 1120) setAttr ($human+".ry") 180;
+	if (getAttr($human+".tz") < -1120) setAttr ($human+".ry") 0;
+}
+
+
+int $i,$j;
+
+
+for($i=0;$i<size($humans);$i++) {
+    vector $c_pos = `getAttr ($humans[$i]+".t")`;
+    float $speed = `getAttr ($humans[$i]+".Speed")`;
+    float $m[] = `xform -q -ws -matrix $humans[$i]`;
+    vector $forward = <<$m[8], $m[9], $m[10]>>;
+
+ 
+    float $detectionDist = $speed * 15; 
+    float $minSafeDist = 30; 
+
+    for($j=0;$j<size($humans);$j++) {
+        if($i == $j) continue;
+
+        vector $n_pos = `getAttr ($humans[$j]+".t")`;
+        vector $toNeighbor = $n_pos - $c_pos;
+        float $dist = mag($toNeighbor);
+
+       
+        if($dist < $minSafeDist) {
+            float $old_ry = `getAttr ($humans[$i]+".ry")`;
+            vector $cp = cross($forward, $toNeighbor);
+            float $turnDir = ($cp.y > 0) ? -1 : 1; 
+            setAttr ($humans[$i]+".ry") ($old_ry + $turnDir * 10);
+            break; 
+        }
+
+  
+        float $angle = rad_to_deg(angle($forward, $toNeighbor));
+        if($dist < $detectionDist && $angle < 30) {
+            float $old_ry = `getAttr ($humans[$i]+".ry")`;
+            vector $cp = cross($forward, $toNeighbor);
+            float $turnDir = ($cp.y > 0) ? -1 : 1;
+            
+           
+            float $avoidForce = (1.0 - ($dist / $detectionDist)) * 15;
+            setAttr ($humans[$i]+".ry") ($old_ry + $turnDir * $avoidForce);
+            break;
+        }
+    }
+}
