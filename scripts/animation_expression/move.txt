@@ -1,0 +1,5 @@
+string $xys[] = `ls -type transform "*_GRP*"`;
+for($xy in $xys) {
+   	float $speed = `getAttr ($xy+".Speed")`;
+	 move -relative -objectSpace 0 0 $speed $xy;
+}
