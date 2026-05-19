@@ -1,0 +1,433 @@
+
+global int $exchangeState = 0; 
+
+// ==========================================
+
+// ==========================================
+global proc CC_refreshLayerUI(string $prefix) {
+    string $numSlider = ($prefix + "NumSlider");
+    string $container = ($prefix + "ScrollLayout");
+    
+    if (!`intSliderGrp -exists $numSlider`) return;
+    if (!`columnLayout -exists $container`) return;
+    
+    int $target = `intSliderGrp -q -v $numSlider`;
+    string $children[] = `columnLayout -q -childArray $container`;
+    int $current = size($children);
+    
+    if ($target > $current) {
+        setParent $container;
+        for ($i = $current + 1; $i <= $target; $i++) {
+            intSliderGrp -label ("layer" + $i + "_count") -field true -minValue 1 -maxValue 10 -value 1 -columnWidth3 75 35 70 -adjustableColumn 3 ($prefix + "LayerCount_" + $i);
+        }
+    }
+    else if ($target < $current) {
+        for ($i = $current; $i > $target; $i--) {
+            string $ui = ($prefix + "LayerCount_" + $i);
+            if (`intSliderGrp -exists $ui`) {
+                deleteUI $ui;
+            }
+        }
+    }
+}
+
+// ==========================================
+
+// ==========================================
+global proc CC_onExchangeToggle() {
+    global int $exchangeState;
+   
+    $exchangeState = $exchangeState == 0 ? 1 : 0;
+    print("// Exchange 状态已切换为: " + $exchangeState + "\n");
+    CC_onGenerate();
+}
+
+// ==========================================
+
+// ==========================================
+global proc CC_onGenerate() {
+    global int $exchangeState;
+    
+    string $selectedItems[] = `textScrollList -q -selectItem fuckerTeamList`;
+    string $fuckerTeam = (size($selectedItems) > 0) ? $selectedItems[0] : "xiangyang";
+    
+  
+    float $pene = `floatSliderGrp -q -v CC_permeabilitySlider`;
+    float $randomVal = `floatSliderGrp -q -v CC_randomSlider`;
+    
+  
+    text -e -visible false -label "" CC_errorText;
+    
+    
+    int $fuckerLayers = `intSliderGrp -q -v fucker_NumSlider`;
+    int $fuckerCounts[];
+    int $fuckerSum = 0;
+    for ($i = 1; $i <= $fuckerLayers; $i++) {
+        string $ctrl = ("fucker_LayerCount_" + $i);
+        if (`intSliderGrp -exists $ctrl`) {
+            int $val = `intSliderGrp -q -v $ctrl`;
+            $fuckerCounts[size($fuckerCounts)] = $val;
+            $fuckerSum += $val;
+        }
+    }
+    if ($fuckerSum != 10) {
+        text -e -visible true -label ("error: " + $fuckerTeam + " team's field player count not equals 10") CC_errorText;
+        return;
+    }
+    
+    
+    int $fuckedLayers = `intSliderGrp -q -v fucked_NumSlider`;
+    int $fuckedCounts[];
+    int $fuckedSum = 0;
+    for ($i = 1; $i <= $fuckedLayers; $i++) {
+        string $ctrl = ("fucked_LayerCount_" + $i);
+        if (`intSliderGrp -exists $ctrl`) {
+            int $val = `intSliderGrp -q -v $ctrl`;
+            $fuckedCounts[size($fuckedCounts)] = $val;
+            $fuckedSum += $val;
+        }
+    }
+    if ($fuckedSum != 10) {
+        text -e -visible true -label "error: wuhan team's field player count not equals 10" CC_errorText;
+        return;
+    }
+    
+    float $half_length = 1120;
+    float $half_width = 600;
+    float $my_rand = $randomVal;
+    string $olds[] =`ls -type transform "*_num*_2" "*_num*_3" "pinOutput*" "xy_GRP*" "wh_GRP*" "*parentConstraint*"`;
+    if(size ($olds)>0) delete $olds;
+    team_gen("xy",$fuckerCounts,$my_rand,$half_length,$half_width,$pene);
+    team_gen("wh",$fuckedCounts,$my_rand,$half_length,$half_width,$pene);
+    string $caches[] = `ls -type cacheFile "Boy_Parabole_AShapeCache*"`;
+    for($c in $caches)
+    {
+         string $plug = ($c + ".time");
+         string $src[] = `listConnections -s true -d false -p true $plug`;
+
+        if (size($src) > 0)
+        {
+            disconnectAttr $src[0] $plug;
+            print ("Disconnected: " + $src[0] + " -> " + $plug + "\n");
+        }   
+    }
+    currentTime 2 -edit;
+    refresh -force;
+    currentTime 1 -edit;
+    refresh -force;
+    
+}
+
+// ==========================================
+
+// ==========================================
+if (`window -exists chuChaoSimWin`) deleteUI chuChaoSimWin;
+window -title "Adversarial Formation GUI v1.0" -widthHeight 560 720 chuChaoSimWin;
+columnLayout -adjustableColumn true -rowSpacing 15 -columnOffset "both" 15;
+
+    
+    text -label "Soccer Adversarial Formation Generator" -font "boldLabelFont" -height 30 -align "center";
+    separator -style "in";
+    
+   
+    rowLayout -numberOfColumns 2 -columnWidth2 260 260 -columnAttach2 "both" "both" -columnOffset2 5 5;
+        
+        columnLayout -adjustableColumn true -rowSpacing 5;
+            text -label "Crusher" -font "boldLabelFont" -align "left" -height 20;
+            textScrollList -numberOfRows 4 -allowMultiSelection false fuckerTeamList;
+            textScrollList -e -append "xiangyang" -append "yichang" -append "huangshi" -append "jingmen" fuckerTeamList;
+            textScrollList -e -append "jingzhou" -append "shiyan" -append "xiaogan" -append "huanggang" fuckerTeamList;
+            textScrollList -e -append "ezhou" -append "xianning" -append "suizhou" -append "enshi" fuckerTeamList;
+            textScrollList -e -append "xiantao" -append "qianjiang" -append "tianmen" -append "shennongjia" fuckerTeamList;
+            textScrollList -e -selectIndexedItem 1 fuckerTeamList;
+            
+            separator -style "none" -height 5;
+            text -label "Formation" -font "obliqueLabelFont" -align "left";
+            
+            intSliderGrp -label "num_layer" -field true -minValue 1 -maxValue 10 -value 3 -columnWidth3 70 35 90 -adjustableColumn 3 fucker_NumSlider;
+            scrollLayout -height 160 -childResizable true;
+                columnLayout -adjustableColumn true fucker_ScrollLayout;
+                    intSliderGrp -label "layer1_count" -field true -minValue 1 -maxValue 10 -value 4 -columnWidth3 75 35 70 -adjustableColumn 3 "fucker_LayerCount_1";
+                    intSliderGrp -label "layer2_count" -field true -minValue 1 -maxValue 10 -value 4 -columnWidth3 75 35 70 -adjustableColumn 3 "fucker_LayerCount_2";
+                    intSliderGrp -label "layer3_count" -field true -minValue 1 -maxValue 10 -value 2 -columnWidth3 75 35 70 -adjustableColumn 3 "fucker_LayerCount_3";
+                setParent ..;
+            setParent ..;
+        setParent ..;
+        
+      
+        columnLayout -adjustableColumn true -rowSpacing 5;
+            text -label "Crushed" -font "boldLabelFont" -align "left" -height 20;
+            text -label "wuhan" -font "boldLabelFont" -align "center" -height 82 -backgroundColor 0.18 0.18 0.18;
+            
+            separator -style "none" -height 5;
+            text -label "Formation" -font "obliqueLabelFont" -align "left";
+            
+            intSliderGrp -label "num_layer" -field true -minValue 1 -maxValue 10 -value 3 -columnWidth3 70 35 90 -adjustableColumn 3 fucked_NumSlider;
+            scrollLayout -height 160 -childResizable true;
+                columnLayout -adjustableColumn true fucked_ScrollLayout;
+                    intSliderGrp -label "layer1_count" -field true -minValue 1 -maxValue 10 -value 4 -columnWidth3 75 35 70 -adjustableColumn 3 "fucked_LayerCount_1";
+                    intSliderGrp -label "layer2_count" -field true -minValue 1 -maxValue 10 -value 4 -columnWidth3 75 35 70 -adjustableColumn 3 "fucked_LayerCount_2";
+                    intSliderGrp -label "layer3_count" -field true -minValue 1 -maxValue 10 -value 2 -columnWidth3 75 35 70 -adjustableColumn 3 "fucked_LayerCount_3";
+                setParent ..;
+            setParent ..;
+        setParent ..;
+    setParent ..;
+    
+    
+    button -label "exchange" -height 38 -backgroundColor 0.15 0.4 0.15 -command "CC_onExchangeToggle";
+    
+    separator -style "in";
+    
+  
+    text -label "Random" -align "left" -font "boldLabelFont";
+   
+    floatSliderGrp -label "Penetrate" -field true -minValue 0.0 -maxValue 1.0 -value 0.0 CC_permeabilitySlider;
+   
+    floatSliderGrp -label "randValue" -field true -minValue 0.0 -maxValue 100.0 -value 50.0 CC_randomSlider;
+    
+    separator -style "in";
+    
+    
+    text -label "" -align "center" -height 25 -font "smallBoldLabelFont" -backgroundColor 0.25 0.1 0.1 -visible false CC_errorText;
+    
+  
+    button -label "generate" -height 40 -backgroundColor 0.15 0.6 0.15 -command "CC_onGenerate";
+
+
+intSliderGrp -e -cc "CC_refreshLayerUI(\"fucker_\")" -dc "CC_refreshLayerUI(\"fucker_\")" fucker_NumSlider;
+intSliderGrp -e -cc "CC_refreshLayerUI(\"fucked_\")" -dc "CC_refreshLayerUI(\"fucked_\")" fucked_NumSlider;
+
+showWindow chuChaoSimWin;
+
+
+
+
+
+
+
+proc fix_num(string $target,string $num)
+{
+    select -r $target;
+    Rivet;
+    string $sel[] = `ls -sl`;
+    string $pin_locator = $sel[1];
+    parentConstraint $pin_locator $num;
+    select -cl;   
+}
+
+proc team_gen(string $city,int $counts[],int $my_rand,float $half_length,float $half_width,float $pene)
+{
+    
+    
+    
+    global int $exchangeState;
+    float $orient_rot = $city=="xy"?$exchangeState*180:(1-$exchangeState)*180;
+    
+    int $i;
+    int $sum =0;
+    for($count in $counts)
+    {
+        $sum += $count;
+    
+    }
+    
+    
+    for($i=1;$i<$sum+1;$i++)
+    {
+        setAttr ($city+"_num"+string($i)+"_1"+".v") 0;    
+    }
+    
+    string $gk[] = `duplicate -rr -un -n ($city+"_GRP0") ("original_gk_"+$city+"_GRP")`; 
+    setAttr ($gk[0]+".v") 1;
+    setAttr ($gk[0]+".t") 0 0 (($orient_rot-90)/180*2*$half_length+(90-$orient_rot)/180*2*$my_rand+rand(-$my_rand,$my_rand));
+    setAttr ($gk[0]+".r")  0 $orient_rot 0;
+    
+    
+    int $i,$j;
+    int $divs = size($counts);
+    float $seg_l = (1+$pene)*$half_length/$divs;
+    int $my_count = 0;
+    for($i=0;$i<$divs;$i++)
+    {
+      
+        float $my_tz = ($orient_rot-90)/180*2*$half_length+(90-$orient_rot)/180*2*($i+1)*$seg_l;
+       
+        
+        for($j=1;$j<($counts[$i]+1);$j++)
+        {
+            $my_count ++;
+            string $new_team[] = `duplicate -rr -un -n ($city+"_GRP"+string($my_count)) ("original_"+$city+"_GRP")`; 
+            setAttr ($new_team[0]+".v") true;
+            float $seg_w = $half_width*2/$counts[$i];
+            float $my_tx = ($orient_rot-90)/180*2*($half_width+$seg_w/2) +(90-$orient_rot)/180*2*$j*$seg_w;
+            $my_tx += rand(-$my_rand,$my_rand);
+            $my_tz = $i==$divs-1?$my_tz+($orient_rot-90)/180*2*rand(0,$my_rand):$my_tz+rand(-$my_rand,$my_rand);  
+            move $my_tx 0 $my_tz $new_team[0];
+            rotate  0 $orient_rot 0 $new_team[0];
+        }
+        
+    }
+    string $numbers[] = `ls -type "transform" ($city+"_num*_1")`;
+    
+    for($num in $numbers)
+    {
+     duplicate -rr  -ic $num;
+     duplicate -rr  -ic $num;
+     string $back_num = startString($num,size($num)-1)+"3"; 
+     
+     string $back_type[] = `listRelatives -fullPath -c -type transform $back_num`;
+     
+     setAttr ($back_type[0]+".sx") 1.5;
+     setAttr ($back_type[0]+".sy") 1.5;
+     setAttr ($back_type[0]+".sz") 1.5;
+    }
+    
+  
+    int $pool[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    
+    
+    for ($i = 9; $i > 0; $i--) {
+        int $j = `rand $i`; 
+        int $tmp = $pool[$i];
+        $pool[$i] = $pool[$j];
+        $pool[$j] = $tmp;
+    }
+    for($num in $numbers)
+    {
+        string $mark_str = substring($num,size($num)-3,size($num)-2);
+        int $mark = `match "[0-9]+" $mark_str`;
+        string $player = string($pool[$mark-1]);
+        string $chest_vtx_xy = $city+"_GRP"+$player+"|Boy_Parabole_A.vtx[447]";
+        string $thigh_vtx_xy = $city+"_GRP"+$player+"|Boy_Parabole_A.vtx[121]";
+        string $back_vtx_xy = $city+"_GRP"+$player+"|Boy_Parabole_A.vtx[426]";
+        string $chest_num = $num;
+        string $thigh_num = startString($num,size($num)-1)+"2";
+        string $back_num = startString($num,size($num)-1)+"3";  
+      
+        fix_num($chest_vtx_xy,$chest_num);
+        fix_num($thigh_vtx_xy,$thigh_num);
+        fix_num($back_vtx_xy,$back_num);
+    
+    }
+    
+    set_prim("chest",$city);
+    set_prim("thigh",$city);
+    set_prim("back",$city);
+    finetune("chest",$city);
+    finetune("thigh",$city);
+    finetune("back",$city);
+}
+proc set_prim(string $location,string $city)
+{
+    int $code = -1;
+    switch($location)
+    {
+        case "chest":
+            $code = 1;
+            break;
+        case "thigh":
+            $code = 2;
+            break;
+        case "back":
+            $code = 3;
+            break;
+        default:
+            error "location input wrong";
+            break;
+                
+        
+    }
+    if($code>0)
+    {
+    
+        set_first_type($location,$city,$code);
+        
+    }
+}
+proc finetune(string $location,string $city)
+{
+    int $code = -1;
+    switch($location)
+    {
+        case "chest":
+            $code = 1;
+            break;
+        case "thigh":
+            $code = 2;
+            break;
+        case "back":
+            $code = 3;
+            break;
+        default:
+            error "location input wrong";
+            break;
+                
+        
+   }
+   if($code > 0)
+   {
+       string $concrete_nums[] = `ls -type transform ($city+"_num*_"+$code)`;
+       string $type1s[] = `listRelatives -fullPath -c -type transform $concrete_nums[0]`;
+       vector $pos_type1 = `getAttr ($type1s[0]+".t")`;
+       vector $rot_type1 = `getAttr ($type1s[0]+".r")`;
+        
+       for($i=1;$i<size($concrete_nums);$i++)
+       {
+             setAttr ($concrete_nums[$i]+".v") 1;
+             string $type[] = `listRelatives -fullPath -c -type transform $concrete_nums[$i]`;
+             setAttr ($type[0]+".tx") ($pos_type1.x);
+             setAttr ($type[0]+".ty") ($pos_type1.y);
+             setAttr ($type[0]+".tz") ($pos_type1.z);
+             setAttr ($type[0]+".rx") ($rot_type1.x);
+             setAttr ($type[0]+".ry") ($rot_type1.y);
+             setAttr ($type[0]+".rz") ($rot_type1.z);
+            
+            
+       }
+       
+       
+       
+   }
+   
+}
+proc set_first_type(string $location,string $city,int $code)
+{
+    string $grp[] = `ls -type transform ($city+"_num1_"+string($code))`;
+    setAttr ($grp[0]+".v") 1;
+
+    string $sel[] = `listRelatives -fullPath -c -type transform $grp[0]`;
+    if (size($sel) == 0) error "请先选择一个目标物体！";
+    
+
+    string $workspace = `workspace -q -rd`; 
+    string $filename = $workspace + "assets/"+$location+"_mesh0_t_r.csv";
+    
+  
+    if (!`filetest -f $filename`) error ("找不到数据文件: " + $filename);
+    
+   
+    $fileId = `fopen $filename "r"`;
+    string $line = `fgetword $fileId`;
+    fclose $fileId;
+    
+    
+    string $buffer[];
+ 
+    tokenize $line "," $buffer;
+    
+    if (size($buffer) == 6) {
+        
+        vector $t = << (float($buffer[0])), (float($buffer[1])), (float($buffer[2])) >>;
+        vector $r = << (float($buffer[3])), (float($buffer[4])), (float($buffer[5])) >>;
+    
+       
+        setAttr ($sel[0] + ".t") ($t.x) ($t.y) ($t.z);
+        setAttr ($sel[0] + ".r") ($r.x) ($r.y) ($r.z);
+    	
+    
+        print ("\nsuccessfully load data and apply to: " + $sel[0] + "\n");
+    } else {
+        error "the format of CSV file is wrong,six values required.";
+    }
+}
+
